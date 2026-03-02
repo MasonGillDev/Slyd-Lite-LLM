@@ -71,8 +71,12 @@ apt-get install -y -qq \
 log "Configuring PostgreSQL"
 systemctl enable --now postgresql
 
-sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='${LITELLM_DB_USER}'" | grep -q 1 || \
+if sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='${LITELLM_DB_USER}'" | grep -q 1; then
+    # User exists — reset password to match current config (handles re-runs)
+    sudo -u postgres psql -c "ALTER USER ${LITELLM_DB_USER} WITH PASSWORD '${LITELLM_DB_PASSWORD}';"
+else
     sudo -u postgres psql -c "CREATE USER ${LITELLM_DB_USER} WITH PASSWORD '${LITELLM_DB_PASSWORD}';"
+fi
 
 sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='${LITELLM_DB_NAME}'" | grep -q 1 || \
     sudo -u postgres psql -c "CREATE DATABASE ${LITELLM_DB_NAME} OWNER ${LITELLM_DB_USER};"
