@@ -97,10 +97,14 @@ source "${INSTALL_DIR}/venv/bin/activate"
 pip install --upgrade pip -q
 pip install 'litellm[proxy]' prisma psycopg2-binary -q
 
-# Generate the Prisma client (required for DB-backed LiteLLM)
+# Generate the Prisma client and push schema to DB
 log "Generating Prisma client"
 PRISMA_SCHEMA=$(python3 -c "import litellm, os; print(os.path.join(os.path.dirname(litellm.__file__), 'proxy', 'schema.prisma'))")
 python3 -m prisma generate --schema="${PRISMA_SCHEMA}"
+
+log "Pushing database schema (creating tables)"
+export DATABASE_URL
+python3 -m prisma db push --schema="${PRISMA_SCHEMA}" --accept-data-loss
 
 LITELLM_BIN="${INSTALL_DIR}/venv/bin/litellm"
 log "LiteLLM installed: $(${LITELLM_BIN} --version 2>&1 || echo 'version check skipped')"
