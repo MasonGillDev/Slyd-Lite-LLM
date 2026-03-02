@@ -9,8 +9,12 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# 0. Logging helpers
+# 0. Root check & logging helpers
 # ---------------------------------------------------------------------------
+if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script must be run as root. Use: sudo bash setup-litellm.sh" >&2
+    exit 1
+fi
 log()  { printf '\n\033[1;32m>>> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33mWARN: %s\033[0m\n' "$*"; }
 die()  { printf '\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
@@ -87,7 +91,14 @@ python3 -m venv "${INSTALL_DIR}/venv"
 source "${INSTALL_DIR}/venv/bin/activate"
 
 pip install --upgrade pip -q
-pip install 'litellm[proxy]' psycopg2-binary -q
+pip install 'litellm[proxy]' prisma psycopg2-binary -q
+
+# Generate the Prisma client (required for DB-backed LiteLLM)
+log "Generating Prisma client"
+prisma generate --schema="${INSTALL_DIR}/venv/lib/python3.*/site-packages/litellm/proxy/db/prisma_schema/schema.prisma" 2>&1 || \
+    prisma py generate 2>&1 || \
+    python3 -c "from prisma import Prisma" 2>&1 || \
+    warn "Prisma client generation may have failed — check logs"
 
 LITELLM_BIN="${INSTALL_DIR}/venv/bin/litellm"
 log "LiteLLM installed: $(${LITELLM_BIN} --version 2>&1 || echo 'version check skipped')"
@@ -199,7 +210,7 @@ SERVICE_FILE="/etc/systemd/system/litellm.service"
 log "Creating systemd service"
 
 # Build the Environment= lines for the service
-ENV_LINES=""
+ENV_LINES="Environment=DATABASE_URL=${DATABASE_URL}\n"
 [ -n "${OPENAI_API_KEY:-}" ]    && ENV_LINES+="Environment=OPENAI_API_KEY=${OPENAI_API_KEY}\n"
 [ -n "${ANTHROPIC_API_KEY:-}" ] && ENV_LINES+="Environment=ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}\n"
 [ -n "${AZURE_API_KEY:-}" ]     && ENV_LINES+="Environment=AZURE_API_KEY=${AZURE_API_KEY}\n"
