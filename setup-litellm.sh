@@ -216,7 +216,7 @@ SERVICE_FILE="/etc/systemd/system/litellm.service"
 log "Creating systemd service"
 
 # Build the Environment= lines for the service
-ENV_LINES="Environment=DATABASE_URL=${DATABASE_URL}\n"
+ENV_LINES="Environment=DATABASE_URL=${DATABASE_URL}\nEnvironment=STORE_MODEL_IN_DB=True\n"
 [ -n "${OPENAI_API_KEY:-}" ]    && ENV_LINES+="Environment=OPENAI_API_KEY=${OPENAI_API_KEY}\n"
 [ -n "${ANTHROPIC_API_KEY:-}" ] && ENV_LINES+="Environment=ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}\n"
 [ -n "${AZURE_API_KEY:-}" ]     && ENV_LINES+="Environment=AZURE_API_KEY=${AZURE_API_KEY}\n"
